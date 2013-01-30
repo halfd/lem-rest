@@ -1,0 +1,140 @@
+#! /usr/local/bin/lem
+--
+-- REST API for LEM
+--
+-- Do it do it do it !
+--
+-- Copyright 2013 Halfdan Mouritzen
+--
+--
+-- Automatic ID assignment and modified-date on elements in the storage
+-- Furthermore some kind of aggregation upwards on modfied? So parents get the last-modfied date
+-- of the last modified child?
+--
+
+local pathprefix = '/home/halfd/Desktop/RestTest/'
+
+local utils = require 'lem.utils'
+local io    = require 'lem.io'
+local http  = require 'lem.http'
+local json = require 'libs.dkjson'
+
+local hathaway = require 'lem.hathaway'
+hathaway.import()
+
+
+local function apiheaders(headers)
+--	headers['Content-Type'] = 'text/javascript; charset=UTF-8'
+--	headers['Cache-Control'] = 'max-age=0, must-revalidate'
+	headers['Access-Control-Allow-Origin'] = '*'
+	headers['Access-Control-Allow-Methods'] = 'GET'
+	headers['Access-Control-Allow-Headers'] = 'origin, x-requested-with, accept'
+	headers['Access-Control-Max-Age'] = '60'
+end
+
+
+local function sendfile(content, path)
+	return function(req, res)
+		res.headers['Content-Type'] = content
+		apiheaders(res.headers)
+		res.file = pathprefix .. path
+	end
+end
+
+
+GET('/',               sendfile('text/html; charset=UTF-8',       'index.html'))
+GET('/index.html',     sendfile('text/html; charset=UTF-8',       'index.html'))
+GET('/js/libs/jquery.min.js',      sendfile('text/javascript; charset=UTF-8', 'js/libs/jquery.min.js'))
+GET('/js/libs/underscore.js',      sendfile('text/javascript; charset=UTF-8', 'js/libs/underscore.js'))
+GET('/js/libs/backbone.js',      sendfile('text/javascript; charset=UTF-8', 'js/libs/backbone.js'))
+GET('/js/app.js',      sendfile('text/javascript; charset=UTF-8', 'js/app.js'))
+
+
+local storage = {}
+
+
+htmlstr = "%s\n" --'<!doctype html><html><head><meta charset="UTF-8" /><style>body{font-family:sans-serif;color:#444}</style></head><body>%s</body></html>'
+
+
+function printtable(table)
+    local str = json.encode(storage, {indent=true})
+    return str
+end
+
+
+GET('/', function(req, res)
+    res:add(htmlstr, printtable(storage))
+end)
+
+-- Read value
+GETM('^/([^/]+)$', function(req, res, key)
+    local value = storage[key]
+		if value == nil then
+				res.status = 404
+		else
+				res.status = 200
+				res:add(htmlstr, printtable(value))
+		end
+end)
+
+-- Read value
+GETM('^/([^/]+)/([^/]+)$', function(req, res, table, key)
+    local table = storage[table]
+		local key = tonumber(key)
+		local value = table[key]
+
+		if value == nil then
+				res.status = 404
+		else
+				res.status = 200
+				res:add(htmlstr, value)
+		end
+end)
+
+-- Write new key/value
+POSTM('^/([^/]+)$', function(req, res, key)
+    local value = req:body()
+		if storage[key] == nil then
+				storage[key] = {}
+		end
+
+    table.insert(storage[key], value)
+		res.status = 201
+		res.headers['Location'] = '/' .. key .. '/' .. #storage[key]
+		apiheaders(res.headers)
+    res:add(htmlstr, "Added : " .. key .. "=" .. value)
+end)
+
+-- Update key
+PUTM('^/([^/]+)/([^/]+)$', function(req, res, table, key)
+    local value = req:body()
+		local key = tonumber(key)
+
+		if storage[table] ~= nil and value ~= nil and key ~= 0 then
+				-- Update our value
+				local _table = storage[table]
+				if _table == nil or _table[key] == nil then
+						res.status = 404
+						return
+				end
+
+				_table[key] = value
+				
+				-- Success but we return no data - everything is known by the client
+				res.status = 204 -- we return no content
+		else
+				res.status = 404 -- good old 404 for now
+		end
+end)
+
+-- Delete entry
+DELETEM('^/([^/]+)/([^/]+)$', function(req, res, table, key)
+
+end)
+
+hathaway.debug = print
+
+Hathaway('*', arg[1] or 8080)
+utils.exit(0)
+
+-- vim: set ts=2 sw=2 noet:
