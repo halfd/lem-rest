@@ -6,13 +6,10 @@
 --
 -- Copyright 2013 Halfdan Mouritzen
 --
---
--- Automatic ID assignment and modified-date on elements in the storage
--- Furthermore some kind of aggregation upwards on modfied? So parents get the last-modfied date
--- of the last modified child?
+-- NYAL License - The Not Yet Any License-License
 --
 
-local pathprefix = '/home/halfd/Desktop/RestTest/'
+local pathprefix = 'tests/www/'
 
 local utils = require 'lem.utils'
 local io    = require 'lem.io'
@@ -57,13 +54,13 @@ htmlstr = "%s\n" --'<!doctype html><html><head><meta charset="UTF-8" /><style>bo
 
 
 function printtable(table)
-    local str = json.encode(storage, {indent=true})
-    return str
+		local str = json.encode(table, {indent=true})
+		return str
 end
 
 
 GET('/', function(req, res)
-    res:add(htmlstr, printtable(storage))
+		res:add(htmlstr, printtable(storage))
 end)
 
 -- Read value
@@ -73,13 +70,13 @@ GETM('^/([^/]+)$', function(req, res, key)
 				res.status = 404
 		else
 				res.status = 200
-				res:add(htmlstr, printtable(value))
+				res:add(htmlstr, json.encode(value))
 		end
 end)
 
 -- Read value
 GETM('^/([^/]+)/([^/]+)$', function(req, res, table, key)
-    local table = storage[table]
+		local table = storage[table]
 		local key = tonumber(key)
 		local value = table[key]
 
@@ -87,27 +84,35 @@ GETM('^/([^/]+)/([^/]+)$', function(req, res, table, key)
 				res.status = 404
 		else
 				res.status = 200
-				res:add(htmlstr, value)
+				res:add(htmlstr, json.encode(value))
 		end
 end)
 
 -- Write new key/value
 POSTM('^/([^/]+)$', function(req, res, key)
-    local value = req:body()
-		if storage[key] == nil then
-				storage[key] = {}
-		end
+		local value = req:body()
 
-    table.insert(storage[key], value)
-		res.status = 201
-		res.headers['Location'] = '/' .. key .. '/' .. #storage[key]
-		apiheaders(res.headers)
-    res:add(htmlstr, "Added : " .. key .. "=" .. value)
+		if #value == 0 then
+				res.status = 400
+		else
+				if storage[key] == nil then
+						storage[key] = {}
+				end
+
+				value = json.decode(value, 1, nil)
+
+				table.insert(storage[key], value)
+
+				res.status = 201
+				res.headers['Location'] = '/' .. key .. '/' .. #storage[key]
+				apiheaders(res.headers)
+				--res:add(htmlstr, "Added : " .. key .. "=" .. value)
+		end
 end)
 
 -- Update key
 PUTM('^/([^/]+)/([^/]+)$', function(req, res, table, key)
-    local value = req:body()
+		local value = req:body()
 		local key = tonumber(key)
 
 		if storage[table] ~= nil and value ~= nil and key ~= 0 then
