@@ -103,10 +103,16 @@ POSTM('^/([^/]+)$', function(req, res, key)
 
 				table.insert(storage[key], value)
 
+				local new_id = #storage[key]
+
 				res.status = 201
-				res.headers['Location'] = '/' .. key .. '/' .. #storage[key]
+				res.headers['Location'] = '/' .. key .. '/' .. new_id
 				apiheaders(res.headers)
-				--res:add(htmlstr, "Added : " .. key .. "=" .. value)
+
+				local returnjson = {}
+				returnjson['id'] = new_id
+
+				res:add(json.encode(returnjson))
 		end
 end)
 
@@ -123,6 +129,7 @@ PUTM('^/([^/]+)/([^/]+)$', function(req, res, table, key)
 						return
 				end
 
+				value = json.decode(value, 1, nil)
 				_table[key] = value
 				
 				-- Success but we return no data - everything is known by the client
