@@ -3,7 +3,7 @@
 var Dude = Backbone.Model.extend({
     urlRoot : "http://localhost:8008/dudes",
     defaults : {
-        "id" : null,
+//        "id" : null,
         "name" : "",
         "score" : 0
     }
@@ -98,7 +98,8 @@ var AppView = Backbone.View.extend({
 
     // Add all items in the **Todos** collection at once.
     addAll: function() {
-      dudes.each(this.addOne, this);
+        $('#content ul').html('');
+        dudes.each(this.addOne, this);
     },
 });
 
@@ -106,6 +107,12 @@ $(function() {
 
 console.log("jpopo")
 app = new AppView;
+
+$('#submitbutton').bind('click', function(ev, el) {
+    var value = $('#nametextfield').val();
+    var dude = new Dude({'name':value});
+    dude.save();
+});
 
 });
 
